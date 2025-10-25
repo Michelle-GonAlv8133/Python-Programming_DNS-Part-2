@@ -82,7 +82,7 @@ dns_records = {
 def run_dns_server():
     # Create a UDP socket and bind it to the local IP address (what unique IP address is used here, similar to webserver lab) and port (the standard port for DNS)
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Research this
-    server_socket.bind(('127.0.0.0', 53))
+    server_socket.bind(('127.0.0.1', 53))
 
     while True:
         try:
@@ -126,7 +126,7 @@ def run_dns_server():
 
             # Send the response back to the client using the `server_socket.sendto` method and put the response to_wire(), return to the addr you received from
             print("Responding to request:", qname)
-            server_socket.sendto(response.to_wire(), addr)
+            server_socket.close()
         except KeyboardInterrupt:
             print('\nExiting...')
             server_socket.close()
