@@ -1,26 +1,23 @@
-# DNSServer.py
-# CS-GY 6843 – Computer Networking – Python DNS Lab Part 2
-
 import dns.message
 import dns.rdatatype
 import dns.rdataclass
 import dns.rdtypes
-import dns.rdata
+import dns.rdtypes.ANY
 from dns.rdtypes.ANY.MX import MX
 from dns.rdtypes.ANY.SOA import SOA
+import dns.rdata
 import socket
 import threading
 import signal
 import os
 import sys
+
 import hashlib
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
-
-
-# ------------------ AES KEY GENERATION AND ENCRYPTION ------------------
+import ast
 
 def generate_aes_key(password, salt):
     kdf = PBKDF2HMAC(
@@ -33,7 +30,7 @@ def generate_aes_key(password, salt):
     key = base64.urlsafe_b64encode(key)
     return key
 
-
+# Lookup details on fernet in the cryptography.io documentation    
 def encrypt_with_aes(input_string, password, salt):
     key = generate_aes_key(password, salt)
     f = Fernet(key)
@@ -47,28 +44,20 @@ def decrypt_with_aes(encrypted_data, password, salt):
     decrypted_data = f.decrypt(encrypted_data)  # call the Fernet decrypt method
     return decrypted_data.decode('utf-8')
 
-
-# ------------------ PARAMETERS FOR ENCRYPTION ------------------
-
-# Encryption parameters
-salt = b'Tandon'
-password = 'msg8133@nyu.edu'      # your real NYU email
+salt = b'Tandon'   # Remember it should be a byte-object
+password = 'msg8133@nyu.edu'    
 input_string = 'AlwaysWatching'
 
-encrypted_value = encrypt_with_aes(input_string, password, salt)
-# Convert from bytes → UTF-8 string
-encrypted_value_str = encrypted_value.decode('utf-8')
+encrypted_value = encrypt_with_aes(input_string, password, salt) # exfil function
+encrypted_value_str = encrypted_value.decode('utf-8')          # exfil function
 
-# ------------------ HASH FUNCTION ------------------
-
+# For future use   
 def generate_sha256_hash(input_string):
     sha256_hash = hashlib.sha256()
     sha256_hash.update(input_string.encode('utf-8'))
     return sha256_hash.hexdigest()
 
-
-# ------------------ DNS RECORDS ------------------
-
+# A dictionary containing DNS records mapping hostnames to different types of DNS data.
 dns_records = {
     'example.com.': {
         dns.rdatatype.A: '192.168.1.101',
@@ -87,7 +76,7 @@ dns_records = {
             86400,  # minimum
         ),
     },
-
+# Add more records as needed (see assignment instructions!
     'safebank.com.': {
         dns.rdatatype.A: '192.168.1.102'
     },
@@ -110,22 +99,24 @@ dns_records = {
 }
 
 
-# ------------------ DNS SERVER ------------------
-
 def run_dns_server():
+     # Create a UDP socket and bind it to the local IP address (what unique IP address is used here, similar to webserver lab) and port (the standard port for DNS)
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.bind(('127.0.0.1', 53))  # localhost and standard DNS port
+    server_socket.bind(('127.0.0.1', 5353))  # localhost and standard DNS port
 
     while True:
         try:
+              # Wait for incoming DNS requests
             data, addr = server_socket.recvfrom(1024)
             request = dns.message.from_wire(data)
             response = dns.message.make_response(request)
 
+            # Get the question from the request
             question = request.question[0]
             qname = question.name.to_text()
             qtype = question.rdtype
 
+            # Check if there is a record in the `dns_records` dictionary that matches the question
             if qname in dns_records and qtype in dns_records[qname]:
                 answer_data = dns_records[qname][qtype]
                 rdata_list = []
@@ -168,9 +159,6 @@ def run_dns_server():
             server_socket.close()
             sys.exit(0)
 
-
-# ------------------ USER INTERACTION ------------------
-
 def run_dns_server_user():
     print("Input 'q' and hit 'enter' to quit")
     print("DNS server is running...")
@@ -190,3 +178,5 @@ def run_dns_server_user():
 
 if __name__ == '__main__':
     run_dns_server_user()
+    #print("Encrypted Value:", encrypted_value)
+    #print("Decrypted Value:", decrypted_value)
